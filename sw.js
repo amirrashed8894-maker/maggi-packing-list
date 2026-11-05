@@ -1,0 +1,5 @@
+const V='v11';const C='maggi-packing-'+V;const F=['./','./index.html','./pl.js','./manifest.webmanifest','./icon-192.png','./icon-512.png','./icon-180.png','./lh_page.jpg','./logo.png','./rashed_logo_gray.png','./html2canvas.min.js','./jspdf.umd.min.js','./fonts/cairo-arabic.woff2','./fonts/cairo-latin.woff2','./fonts/cairo-latin-ext.woff2'];
+self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>Promise.all(F.map(u=>fetch(u,{cache:'no-store'}).then(r=>r.ok&&c.put(u,r)).catch(()=>0)))))});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==C).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
+self.addEventListener('message',e=>{if(e.data==='ver')e.source&&e.source.postMessage({ver:V})});
+self.addEventListener('fetch',e=>{const r=e.request;if(r.method!=='GET')return;e.respondWith(fetch(r,{cache:'no-store'}).then(res=>{if(res.ok){const cp=res.clone();caches.open(C).then(c=>c.put(r,cp))}return res}).catch(()=>caches.match(r,{ignoreSearch:true}).then(x=>x||caches.match('./index.html'))))});

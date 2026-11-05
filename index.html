@@ -1,0 +1,24 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>باكينج ليست — ماجي فروت</title>
+<link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="icon-180.png"><meta name="theme-color" content="#222">
+<style>
+@font-face{font-family:Cairo;src:url(fonts/cairo-arabic.woff2) format('woff2');unicode-range:U+0600-06FF,U+200C-200E,U+2010-2011,U+204F,U+2E41,U+FB50-FDFF,U+FE80-FEFC}
+@font-face{font-family:Cairo;src:url(fonts/cairo-latin.woff2) format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:Cairo;src:url(fonts/cairo-latin-ext.woff2) format('woff2');unicode-range:U+0100-024F,U+0259,U+1E00-1EFF,U+2020,U+20A0-20AB,U+20AD-20CF,U+2113,U+2C60-2C7F,U+A720-A7FF}
+*{box-sizing:border-box}body{font-family:Cairo,sans-serif;margin:0;background:#f3f3f3;color:#111}
+header{background:#222;color:#fff;padding:10px 12px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:5}header img{height:34px;background:#fff;border-radius:6px;padding:2px}header b{font-size:17px}
+main{max-width:900px;margin:auto;padding:10px}.card{background:#fff;border-radius:10px;padding:12px;margin-bottom:10px;box-shadow:0 1px 3px #0002}
+h3{margin:0 0 8px;font-size:16px}.g{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:8px}
+label{font-size:13px;color:#444;display:flex;flex-direction:column;gap:3px}input,select,textarea{font:inherit;font-size:16px;padding:8px;border:1px solid #bbb;border-radius:7px;width:100%;background:#fff}
+input[readonly]{background:#eee;font-weight:bold}.btn{font:inherit;font-size:15px;padding:10px 14px;border:0;border-radius:8px;background:#444;color:#fff;cursor:pointer}.btn.o{background:#111}.btn.l{background:#e4e4e4;color:#111}.btn.s{padding:6px 10px;font-size:13px}
+.bar{display:flex;flex-wrap:wrap;gap:8px}.pal{border:1px solid #ddd;border-radius:8px;padding:8px;margin-bottom:8px;display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;position:relative}.pal .x{position:absolute;left:6px;top:4px;background:none;border:0;font-size:18px;color:#999}
+.pal .i{grid-column:1/-1;font-size:12px;color:#777}table{border-collapse:collapse;width:100%;font-size:13px}th,td{border:1px solid #ccc;padding:4px 6px;text-align:center}th{background:#eee}.tot td{font-weight:bold;background:#f6f6f6}.sub td{background:#f4f4f4;font-weight:600}.vv{font-weight:bold}.tl{height:1px;background:#aaa;width:40%;margin:2px auto 8px}h4{margin:8px 0 4px}
+.test{background:#222;color:#fff;text-align:center;padding:4px;font-weight:bold}.hint{font-size:12px;color:#777}
+#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:8px 16px;border-radius:8px;display:none;z-index:9}
+</style></head><body>
+<header><img src="logo.png" alt=""><b>باكينج ليست — شركة ماجي فروت</b></header>
+<main id="m"></main><div id="toast"></div>
+<script src="html2canvas.min.js"></script><script src="jspdf.umd.min.js"></script><script src="pl.js?v=11"></script>
+<div id="ver" style="text-align:center;font-size:11px;color:#999;padding:6px">نسخة v11</div>
+<script>if('serviceWorker' in navigator){const had=!!navigator.serviceWorker.controller;let done=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!done){done=true;location.reload()}});
+navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{r.update();document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')r.update()})})}</script>
+</body></html>
