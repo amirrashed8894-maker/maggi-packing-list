@@ -5,6 +5,17 @@
   var TOKEN_KEY = 'alola_auth_token';
   var DEVICE_KEY = 'alola_device_id';
   var USER_KEY = 'alola_auth_user';
+  var APP = (function () {
+    if (window.ALOLA_AUTH_APP) return String(window.ALOLA_AUTH_APP);
+    var h = String(location.hostname || '');
+    if (h.indexOf('maggi-packing-list') !== -1) return 'maggi';
+    if (h.indexOf('alola-production') !== -1) return 'production';
+    if (h.indexOf('alola-quality') !== -1) return 'quality';
+    return '';
+  })();
+  function appAllowed(user) {
+    return !!(user && Array.isArray(user.apps) && user.apps.indexOf(APP) !== -1);
+  }
 
   function uuid() {
     if (crypto.randomUUID) return crypto.randomUUID();
@@ -154,10 +165,11 @@
     try {
       var r = await api('/api/login', {
         method: 'POST',
-        body: { username: username, password: password, deviceId: deviceId() },
+        body: { username: username, password: password, deviceId: deviceId(), app: APP },
         timeout: 60000
       });
       if (!r.data || !r.data.ok) {
+        if (r.status === 403 && r.data && r.data.code === 'APP_DENIED') clearSession();
         if (eEl) eEl.textContent = (r.data && r.data.error) || 'فشل الدخول';
         return;
       }
@@ -242,7 +254,7 @@
       return;
     }
     try {
-      var r = await api('/api/me', { timeout: 60000 });
+      var r = await api('/api/me?app=' + encodeURIComponent(APP), { timeout: 60000 });
       if (r.data && r.data.ok) {
         setSession(token, r.data.user);
         hideOverlay();
@@ -258,7 +270,7 @@
     } catch (e) {
       // Auth server cold start / offline: keep session optimistically if token present & not expired-looking
       var user = getUser();
-      if (user && user.username) {
+      if (user && user.username && appAllowed(user)) {
         hideOverlay();
         mountBar(user);
         return;
