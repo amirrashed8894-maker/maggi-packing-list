@@ -11,14 +11,14 @@ h3{margin:0 0 8px;font-size:16px}.g{display:grid;grid-template-columns:repeat(au
 label{font-size:13px;color:#444;display:flex;flex-direction:column;gap:3px}input,select,textarea{font:inherit;font-size:16px;padding:8px;border:1px solid #bbb;border-radius:7px;width:100%;background:#fff}
 input[readonly]{background:#eee;font-weight:bold}.btn{font:inherit;font-size:15px;padding:10px 14px;border:0;border-radius:8px;background:#444;color:#fff;cursor:pointer}.btn.o{background:#111}.btn.l{background:#e4e4e4;color:#111}.btn.s{padding:6px 10px;font-size:13px}
 .bar{display:flex;flex-wrap:wrap;gap:8px}.pal{border:1px solid #ddd;border-radius:8px;padding:8px;margin-bottom:8px;display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:6px;position:relative}.pal .x{position:absolute;left:6px;top:4px;background:none;border:0;font-size:18px;color:#999}
-.pal .i{grid-column:1/-1;font-size:12px;color:#777}table{border-collapse:collapse;width:100%;font-size:13px}th,td{border:1px solid #ccc;padding:4px 6px;text-align:center}th{background:#eee}td.bx,th.bx{background:#ececec;color:#222;font-weight:700}.tot td{font-weight:bold;background:#f6f6f6}.sub td{background:#f4f4f4;font-weight:600}.vv{font-weight:bold}.tl{height:1px;background:#aaa;width:40%;margin:2px auto 8px}h4{margin:8px 0 4px}
+.pal .i{grid-column:1/-1;font-size:12px;color:#777}table{border-collapse:collapse;width:100%;font-size:13px}th,td{border:1px solid #ccc;padding:4px 6px;text-align:center}th{background:#eee}td.bx,th.bx{background:#f5f5f5;color:#8d8d8d;font-weight:500;font-size:11px;width:52px;max-width:60px}th.bx{font-size:10px;color:#9a9a9a;font-weight:600}.gbx{border:1px solid #d8dee4;border-radius:6px;background:#f7f8f9;padding:8px 10px;margin:8px 0}.gbx .gt{font-weight:800;font-size:14px;color:#1f2a3c;margin:0 0 4px}.gbx .gl{font-size:13px;color:#333;line-height:1.6}.gbx .gl .gq{color:#8a8a8a;font-size:12px}.gbx .gs{display:flex;flex-wrap:wrap;gap:14px;margin-top:6px;font-weight:700;color:#1f2a3c;font-size:13px}.tot td{font-weight:bold;background:#f6f6f6}.sub td{background:#f4f4f4;font-weight:600}.vv{font-weight:bold}.tl{height:1px;background:#aaa;width:40%;margin:2px auto 8px}h4{margin:8px 0 4px}
 .test{background:#222;color:#fff;text-align:center;padding:4px;font-weight:bold}.hint{font-size:12px;color:#777}
 #toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:8px 16px;border-radius:8px;display:none;z-index:9}
 </style></head><body><script src="auth-gate.js?v=2"></script>
 <header><img src="logo.png" alt=""><b>باكينج ليست — شركة ماجي فروت</b></header>
 <main id="m"></main><div id="toast"></div>
-<script src="html2canvas.min.js"></script><script src="jspdf.umd.min.js"></script><script src="pl.js?v=14"></script>
-<div id="ver" style="text-align:center;font-size:11px;color:#999;padding:6px">نسخة v14</div>
+<script src="html2canvas.min.js"></script><script src="jspdf.umd.min.js"></script><script src="pl.js?v=15"></script>
+<div id="ver" style="text-align:center;font-size:11px;color:#999;padding:6px">نسخة v15</div>
 <script>if('serviceWorker' in navigator){const had=!!navigator.serviceWorker.controller;let done=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(had&&!done){done=true;location.reload()}});
 navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>{r.update();document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')r.update()})})}</script>
 </body></html>
