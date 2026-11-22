@@ -1,4 +1,6 @@
-/*! Alola shared login gate v8.1 — talks to alola-maggi-auth. v8: Amir's paired phone/Mac is remembered for good
+/*! Alola shared login gate v9 — v9: staff stay signed in on their one bound phone (1-year session renewed on every open,
+    self-healing after a server store wipe, «برامجي» to open their other apps without a password); «خروج» still needs the password.
+    v8.1 — talks to alola-maggi-auth. v8: Amir's paired phone/Mac is remembered for good
     (silent re-entry, self-healing pairing proof, one-tap switch between apps); staff login unchanged. */
 (function () {
   'use strict';
@@ -29,6 +31,16 @@
       return m[1];
     } catch (e) { return ''; }
   })();
+  var STAFF_HANDOFF = (function () {    // one-time link for staff from another Alola app (#staff-handoff=…)
+    try {
+      var m = /[#&]staff-handoff=([A-Za-z0-9_.-]+)/.exec(location.hash || '');
+      if (!m) return '';
+      history.replaceState(history.state, '', location.pathname + location.search);
+      return m[1];
+    } catch (e) { return ''; }
+  })();
+  function isStaff(user) { return !!(user && user.username && user.username !== 'amir' && !user.multiDevice); }
+  function keepStorage() { try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () {}); } catch (e) {} }
   var OTHER_APPS = [['production', 'الإنتاج اليومي'], ['packing', 'باكينج ليست العلا'], ['quality', 'الجودة'], ['receiving', 'استلام الخام'], ['cost', 'بيان التكلفة'], ['handover', 'تسليم أصول ورق'], ['maggi', 'باكينج ليست ماجي']];
   var APP_TITLES = { production: 'الإنتاج اليومي — العلا', quality: 'الجودة — العلا', receiving: 'استلام الخام — العلا', packing: 'باكينج ليست العلا', maggi: 'باكينج ليست ماجي', cost: 'بيان التكلفة — العلا', handover: 'تسليم أصول ورق' };
   // wake the free auth server early (cold start) while the user is typing
@@ -67,6 +79,8 @@
   }
   function setSession(token, user) {
     rememberAmir(token, user);
+    if (isStaff(user)) keepStorage(); // ask Safari/Chrome to keep the device id + session
+
     try {
       localStorage.setItem(TOKEN_KEY, token);
       localStorage.setItem(USER_KEY, JSON.stringify(user || {}));
@@ -304,7 +318,7 @@
     var label = (user && user.label) || (user && user.username) || '';
     bar.innerHTML = '<button type="button" id="alola-auth-out" title="خروج">خروج' + (label ? ' · ' + label : '') + '</button>' +
       (user && user.admin ? '<button type="button" id="alola-auth-adm" title="إدارة الأجهزة">إدارة الأجهزة</button>' : '') +
-      (user && user.username === 'amir' && quickToken(getToken()) ? '<button type="button" id="alola-auth-apps" title="افتح برنامج تاني من غير كود">برامجي</button>' : '');
+      ((user && user.username === 'amir' && quickToken(getToken())) || staffApps(user).length ? '<button type="button" id="alola-auth-apps" title="افتح برنامج تاني من غير باسورد">برامجي</button>' : '');
     document.body.appendChild(bar);
     document.getElementById('alola-auth-out').onclick = function () {
       if (user && user.username === 'amir') lsSet(OUT_KEY, '1');
@@ -314,16 +328,22 @@
     var adm = document.getElementById('alola-auth-adm');
     if (adm) adm.onclick = openAdmin;
     var apps = document.getElementById('alola-auth-apps');
-    if (apps) apps.onclick = openApps;
+    if (apps) apps.onclick = function () { openApps(user); };
   }
 
-  function openApps() {
+  function staffApps(user) {
+    if (!isStaff(user) || !Array.isArray(user.apps)) return [];
+    return OTHER_APPS.filter(function (a) { return a[0] !== APP && user.apps.indexOf(a[0]) !== -1; });
+  }
+  function openApps(user) {
+    var staff = isStaff(user);
+    var list = staff ? staffApps(user) : OTHER_APPS.filter(function (a) { return a[0] !== APP; });
     var panel = document.getElementById('alola-auth-admin');
     if (panel) panel.remove();
     panel = document.createElement('div');
     panel.id = 'alola-auth-admin';
     panel.innerHTML = '<div class="box"><h3>برامجي</h3><div style="font-size:13px;color:#666;margin-bottom:6px">افتح أي برنامج وانت داخل على طول — والتليفون ده هيتفتكر فيه كمان.</div>' +
-      OTHER_APPS.filter(function (a) { return a[0] !== APP; }).map(function (a) { return '<div class="row"><span><b>' + a[1] + '</b></span><button type="button" data-to="' + a[0] + '">فتح</button></div>'; }).join('') +
+      list.map(function (a) { return '<div class="row"><span><b>' + a[1] + '</b></span><button type="button" data-to="' + a[0] + '">فتح</button></div>'; }).join('') +
       '<div class="msg" id="alola-auth-amsg"></div><div style="margin-top:12px;text-align:left"><button type="button" class="x" id="alola-auth-aclose">إغلاق</button></div></div>';
     document.body.appendChild(panel);
     panel.style.display = 'flex';
@@ -333,7 +353,7 @@
         var msg = document.getElementById('alola-auth-amsg');
         b.disabled = true; msg.textContent = 'جاري الفتح…';
         try {
-          var r = await api('/api/amir-handoff', { method: 'POST', body: { to: b.getAttribute('data-to'), app: APP } });
+          var r = await api(staff ? '/api/staff-handoff' : '/api/amir-handoff', { method: 'POST', body: { to: b.getAttribute('data-to'), app: APP } });
           if (r.data && r.data.ok && r.data.url) { location.href = r.data.url; return; }
           msg.textContent = (r.data && r.data.error) || 'تعذر الفتح';
         } catch (e) { msg.textContent = 'تعذر الاتصال بالسيرفر'; }
@@ -442,6 +462,18 @@
     wake();
     var token = getToken();
     var amirDev = AMIR_APPS.indexOf(APP) !== -1 && !!lsGet(PROOF_KEY) && lsGet(OUT_KEY) !== '1';
+    if (STAFF_HANDOFF) {
+      showOverlay();
+      var se0 = document.getElementById('alola-auth-err');
+      if (se0) se0.textContent = 'جاري الدخول…';
+      try {
+        var shr = await api('/api/login-handoff', { method: 'POST', body: { handoff: STAFF_HANDOFF, deviceId: deviceId(), app: APP, label: devLabel() }, timeout: 90000 });
+        if (shr.data && shr.data.ok) { setSession(shr.data.token, shr.data.user); hideOverlay(); mountBar(shr.data.user); return; }
+        if (!token && se0) { se0.textContent = (shr.data && shr.data.error) || 'تعذر الدخول من الرابط'; return; }
+      } catch (e) {
+        if (!token) { if (se0) se0.textContent = 'السيرفر بيصحى… افتح الرابط تاني بعد لحظات'; return; }
+      }
+    }
     if (HANDOFF) {
       busyOverlay();
       try {
