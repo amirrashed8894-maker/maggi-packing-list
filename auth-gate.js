@@ -1,4 +1,4 @@
-/*! Alola shared login gate v8 — talks to alola-maggi-auth. v8: Amir's paired phone/Mac is remembered for good
+/*! Alola shared login gate v8.1 — talks to alola-maggi-auth. v8: Amir's paired phone/Mac is remembered for good
     (silent re-entry, self-healing pairing proof, one-tap switch between apps); staff login unchanged. */
 (function () {
   'use strict';
@@ -86,6 +86,8 @@
   function rememberAmir(token, user) {
     if (user && user.username === 'amir' && AMIR_APPS.indexOf(APP) !== -1 && quickToken(token)) {
       lsSet(PROOF_KEY, token); lsSet(OUT_KEY, ''); lsSet('alola_amir_paired', '1');
+      // ask Safari/Chrome to keep this site's storage (device id + proof) instead of evicting it
+      try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () {}); } catch (e) {}
     }
   }
   function getUser() {
