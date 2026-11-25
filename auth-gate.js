@@ -1,44 +1,27 @@
-/*! Alola shared login gate v9 — v9: staff stay signed in on their one bound phone (1-year session renewed on every open,
-    self-healing after a server store wipe, «برامجي» to open their other apps without a password); «خروج» still needs the password.
-    v8.1 — talks to alola-maggi-auth. v8: Amir's paired phone/Mac is remembered for good
-    (silent re-entry, self-healing pairing proof, one-tap switch between apps); staff login unchanged. */
+/*! Maggi packing-list login gate v10 — standalone maggi-auth (not alola-maggi-auth).
+    Staff: one device, 1-year renewing session. Amir: passwordless «دخول أمير» on a paired
+    phone/Mac; first bind uses a one-time link or the existing 8-digit code once. */
 (function () {
   'use strict';
-  var API = (window.ALOLA_AUTH_API || 'https://alola-maggi-auth.onrender.com').replace(/\/$/, '');
-  var TOKEN_KEY = 'alola_auth_token';
-  var DEVICE_KEY = 'alola_device_id';
-  var USER_KEY = 'alola_auth_user';
-  var APP = (function () {
-    if (window.ALOLA_AUTH_APP) return String(window.ALOLA_AUTH_APP);
-    var h = String(location.hostname || '');
-    if (h.indexOf('maggi-packing-list') !== -1) return 'maggi';
-    if (h.indexOf('alola-packing-list') !== -1) return 'packing';
-    if (h.indexOf('alola-receiving') !== -1) return 'receiving';
-    if (h.indexOf('alola-production') !== -1) return 'production';
-    if (h.indexOf('alola-quality') !== -1) return 'quality';
-    if (h.indexOf('paper-handover') !== -1) return 'handover';
-    if (h.indexOf('alola-cost-statement') !== -1) return 'cost';
-    return '';
-  })();
-  var AMIR_APPS = ['packing', 'production', 'quality', 'receiving', 'handover', 'cost', 'maggi'];
-  var PROOF_KEY = 'alola_amir_proof';   // last quick-entry token: proof this device was paired (kept on logout)
-  var OUT_KEY = 'alola_amir_out';       // Amir pressed «خروج»: no automatic re-entry until he taps «دخول أمير»
-  var HANDOFF = (function () {          // one-time link from another Alola app (#amir-handoff=…)
+  var API = (window.MAGGI_AUTH_API || window.ALOLA_AUTH_API || 'https://maggi-auth.onrender.com').replace(/\/$/, '');
+  var TOKEN_KEY = 'maggi_auth_token';
+  var DEVICE_KEY = 'maggi_device_id';
+  var USER_KEY = 'maggi_auth_user';
+  var APP = 'maggi';
+  var AMIR_APPS = ['maggi'];
+  var PROOF_KEY = 'maggi_amir_proof';
+  var OUT_KEY = 'maggi_amir_out';
+  var BIND_TOKEN = (function () {
     try {
-      var m = /[#&]amir-handoff=([A-Za-z0-9_.-]+)/.exec(location.hash || '');
+      var m = /[#&]amir-bind=([A-Za-z0-9_-]+)/.exec(location.hash || '');
+      if (!m) m = /[?&]amir_bind=([A-Za-z0-9_-]+)/.exec(location.search || '');
       if (!m) return '';
-      history.replaceState(history.state, '', location.pathname + location.search);
+      history.replaceState(history.state, '', location.pathname);
       return m[1];
     } catch (e) { return ''; }
   })();
-  var STAFF_HANDOFF = (function () {    // one-time link for staff from another Alola app (#staff-handoff=…)
-    try {
-      var m = /[#&]staff-handoff=([A-Za-z0-9_.-]+)/.exec(location.hash || '');
-      if (!m) return '';
-      history.replaceState(history.state, '', location.pathname + location.search);
-      return m[1];
-    } catch (e) { return ''; }
-  })();
+  var HANDOFF = '';
+  var STAFF_HANDOFF = '';
   function isStaff(user) { return !!(user && user.username && user.username !== 'amir' && !user.multiDevice); }
   function keepStorage() { try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(function () {}); } catch (e) {} }
   var OTHER_APPS = [['production', 'الإنتاج اليومي'], ['packing', 'باكينج ليست العلا'], ['quality', 'الجودة'], ['receiving', 'استلام الخام'], ['cost', 'بيان التكلفة'], ['handover', 'تسليم أصول ورق'], ['maggi', 'باكينج ليست ماجي']];
@@ -149,8 +132,8 @@
     el.id = 'alola-auth-overlay';
     el.innerHTML = [
       '<div class="box">',
-      '<h2>تسجيل الدخول</h2>',
-      '<p class="sub">' + (APP_TITLES[APP] || 'برامج العلا') + ' — أدخل اليوزر والباسورد</p>',
+      '<h2>تسجيل الدخول — باكينج ليست ماجي</h2>',
+      '<p class="sub">أدخل اليوزر والباسورد، أو «دخول أمير» من جهاز مربوط</p>',
       '<label>اليوزر</label>',
       '<input id="alola-auth-user" autocomplete="username" autocapitalize="off" spellcheck="false">',
       '<label>الباسورد</label>',
@@ -245,7 +228,7 @@
     }
   }
 
-  var PAIRED_KEY = 'alola_amir_paired';
+  var PAIRED_KEY = 'maggi_amir_paired';
   function devLabel() {
     var ua = navigator.userAgent || '';
     if (/iPhone/.test(ua)) return 'iPhone';
@@ -318,7 +301,7 @@
     var label = (user && user.label) || (user && user.username) || '';
     bar.innerHTML = '<button type="button" id="alola-auth-out" title="خروج">خروج' + (label ? ' · ' + label : '') + '</button>' +
       (user && user.admin ? '<button type="button" id="alola-auth-adm" title="إدارة الأجهزة">إدارة الأجهزة</button>' : '') +
-      ((user && user.username === 'amir' && quickToken(getToken())) || staffApps(user).length ? '<button type="button" id="alola-auth-apps" title="افتح برنامج تاني من غير باسورد">برامجي</button>' : '');
+      (user && user.username === 'amir' ? '<button type="button" id="alola-auth-apps" title="برامج العلا (دخول مستقل)">برامج العلا</button>' : '');
     document.body.appendChild(bar);
     document.getElementById('alola-auth-out').onclick = function () {
       if (user && user.username === 'amir') lsSet(OUT_KEY, '1');
@@ -335,30 +318,28 @@
     if (!isStaff(user) || !Array.isArray(user.apps)) return [];
     return OTHER_APPS.filter(function (a) { return a[0] !== APP && user.apps.indexOf(a[0]) !== -1; });
   }
+  var APP_URLS = {
+    production: 'https://alola-production.onrender.com/',
+    packing: 'https://alola-packing-list.onrender.com/',
+    quality: 'https://alola-quality.onrender.com/',
+    receiving: 'https://alola-receiving.onrender.com/',
+    cost: 'https://alola-cost-statement.onrender.com/',
+    handover: 'https://alrashed-paper-handover.onrender.com/'
+  };
   function openApps(user) {
-    var staff = isStaff(user);
-    var list = staff ? staffApps(user) : OTHER_APPS.filter(function (a) { return a[0] !== APP; });
+    var list = OTHER_APPS.filter(function (a) { return a[0] !== APP && APP_URLS[a[0]]; });
     var panel = document.getElementById('alola-auth-admin');
     if (panel) panel.remove();
     panel = document.createElement('div');
     panel.id = 'alola-auth-admin';
-    panel.innerHTML = '<div class="box"><h3>برامجي</h3><div style="font-size:13px;color:#666;margin-bottom:6px">افتح أي برنامج وانت داخل على طول — والتليفون ده هيتفتكر فيه كمان.</div>' +
-      list.map(function (a) { return '<div class="row"><span><b>' + a[1] + '</b></span><button type="button" data-to="' + a[0] + '">فتح</button></div>'; }).join('') +
+    panel.innerHTML = '<div class="box"><h3>برامج العلا</h3><div style="font-size:13px;color:#666;margin-bottom:6px">باكينج ماجي بقى له دخول مستقل. برامج العلا ليها تسجيل دخول لوحدها.</div>' +
+      list.map(function (a) { return '<div class="row"><span><b>' + a[1] + '</b></span><button type="button" data-url="' + APP_URLS[a[0]] + '">فتح</button></div>'; }).join('') +
       '<div class="msg" id="alola-auth-amsg"></div><div style="margin-top:12px;text-align:left"><button type="button" class="x" id="alola-auth-aclose">إغلاق</button></div></div>';
     document.body.appendChild(panel);
     panel.style.display = 'flex';
     document.getElementById('alola-auth-aclose').onclick = function () { panel.remove(); };
-    panel.querySelectorAll('button[data-to]').forEach(function (b) {
-      b.onclick = async function () {
-        var msg = document.getElementById('alola-auth-amsg');
-        b.disabled = true; msg.textContent = 'جاري الفتح…';
-        try {
-          var r = await api(staff ? '/api/staff-handoff' : '/api/amir-handoff', { method: 'POST', body: { to: b.getAttribute('data-to'), app: APP } });
-          if (r.data && r.data.ok && r.data.url) { location.href = r.data.url; return; }
-          msg.textContent = (r.data && r.data.error) || 'تعذر الفتح';
-        } catch (e) { msg.textContent = 'تعذر الاتصال بالسيرفر'; }
-        b.disabled = false;
-      };
+    panel.querySelectorAll('button[data-url]').forEach(function (b) {
+      b.onclick = function () { location.href = b.getAttribute('data-url'); };
     });
   }
 
@@ -457,9 +438,37 @@
     }
   }
 
+  async function consumeBindLink() {
+    if (!BIND_TOKEN) return false;
+    showOverlay();
+    var eEl = document.getElementById('alola-auth-err');
+    if (eEl) eEl.textContent = 'جاري ربط جهاز أمير…';
+    try {
+      var r = await api('/api/login-amir', {
+        method: 'POST',
+        body: { deviceId: deviceId(), app: APP, label: devLabel(), bindToken: BIND_TOKEN },
+        timeout: 90000
+      });
+      if (r.data && r.data.ok) {
+        setSession(r.data.token, r.data.user);
+        try { localStorage.setItem(PAIRED_KEY, '1'); } catch (e) {}
+        hideOverlay();
+        mountBar(r.data.user);
+        return true;
+      }
+      if (eEl) eEl.textContent = (r.data && r.data.error) || 'تعذر الربط من الرابط';
+      return 'shown';
+    } catch (e) {
+      if (eEl) eEl.textContent = 'السيرفر بيصحى… افتح الرابط تاني بعد لحظات';
+      return 'shown';
+    }
+  }
+
   async function boot() {
     injectStyles();
     wake();
+    var bound = await consumeBindLink();
+    if (bound === true || bound === 'shown') return;
     var token = getToken();
     var amirDev = AMIR_APPS.indexOf(APP) !== -1 && !!lsGet(PROOF_KEY) && lsGet(OUT_KEY) !== '1';
     if (STAFF_HANDOFF) {
@@ -539,7 +548,7 @@
     }
   }
 
-  window.AlolaAuth = {
+  window.AlolaAuth = window.MaggiAuth = {
     logout: function () { clearSession(); location.reload(); },
     user: getUser,
     apiBase: API
