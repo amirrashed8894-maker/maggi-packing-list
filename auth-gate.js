@@ -1,4 +1,4 @@
-/*! Maggi packing-list login gate v10 — standalone maggi-auth (not alola-maggi-auth).
+/*! Maggi packing-list login gate v11 — standalone maggi-auth (not alola-maggi-auth). Device id is kept in localStorage + cookie + IndexedDB.
     Staff: one device, 1-year renewing session. Amir: passwordless «دخول أمير» on a paired
     phone/Mac; first bind uses a one-time link or the existing 8-digit code once. */
 (function () {
@@ -45,16 +45,90 @@
     });
   }
 
-  function deviceId() {
+  // Persist the same-browser device id in localStorage + cookie + IndexedDB so Chrome
+  // evicting one store does not mint a new id and lock the real phone out. This is not
+  // a cross-browser fingerprint: incognito, another browser, or cleared site data still
+  // look like a different device (Amir must reset from «إدارة الأجهزة»).
+  var DEVICE_KEY_LEGACY = 'alola_device_id';
+  var DEVICE_DB = 'maggi-device';
+  var deviceIdMem = '';
+  var deviceIdReady = null;
+
+  function validId(id) {
+    id = String(id || '');
+    return (id.length >= 16 && id.length <= 80) ? id : '';
+  }
+  function cookieGet(name) {
     try {
-      var id = localStorage.getItem(DEVICE_KEY);
-      if (id && id.length >= 16) return id;
-      id = uuid();
-      localStorage.setItem(DEVICE_KEY, id);
-      return id;
-    } catch (e) {
-      return uuid();
-    }
+      var m = ('; ' + document.cookie).split('; ' + name + '=');
+      if (m.length < 2) return '';
+      return validId(decodeURIComponent(m.pop().split(';').shift() || ''));
+    } catch (e) { return ''; }
+  }
+  function cookieSet(name, val) {
+    try {
+      var sec = location.protocol === 'https:' ? '; Secure' : '';
+      document.cookie = name + '=' + encodeURIComponent(val) + '; Path=/; Max-Age=157680000; SameSite=Lax' + sec;
+    } catch (e) {}
+  }
+  function idbGet() {
+    return new Promise(function (resolve) {
+      try {
+        if (!window.indexedDB) return resolve('');
+        var req = indexedDB.open(DEVICE_DB, 1);
+        req.onupgradeneeded = function () {
+          var db = req.result;
+          if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
+        };
+        req.onerror = function () { resolve(''); };
+        req.onsuccess = function () {
+          try {
+            var g = req.result.transaction('kv', 'readonly').objectStore('kv').get('id');
+            g.onsuccess = function () { resolve(validId(g.result)); };
+            g.onerror = function () { resolve(''); };
+          } catch (e) { resolve(''); }
+        };
+      } catch (e) { resolve(''); }
+    });
+  }
+  function idbSet(id) {
+    try {
+      if (!window.indexedDB) return;
+      var req = indexedDB.open(DEVICE_DB, 1);
+      req.onupgradeneeded = function () {
+        var db = req.result;
+        if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
+      };
+      req.onsuccess = function () {
+        try { req.result.transaction('kv', 'readwrite').objectStore('kv').put(id, 'id'); } catch (e) {}
+      };
+    } catch (e) {}
+  }
+  function persistId(id) {
+    deviceIdMem = id;
+    try { localStorage.setItem(DEVICE_KEY, id); } catch (e) {}
+    cookieSet(DEVICE_KEY, id);
+    idbSet(id);
+    keepStorage();
+    return id;
+  }
+  function syncId() {
+    var fromLs = '';
+    try { fromLs = localStorage.getItem(DEVICE_KEY) || localStorage.getItem(DEVICE_KEY_LEGACY) || ''; } catch (e) {}
+    return validId(deviceIdMem) || validId(fromLs) || cookieGet(DEVICE_KEY);
+  }
+  function deviceId() {
+    var id = syncId();
+    if (id) return persistId(id);
+    return persistId(uuid());
+  }
+  function ensureDeviceId() {
+    if (deviceIdReady) return deviceIdReady;
+    deviceIdReady = idbGet().then(function (fromDb) {
+      var chosen = syncId() || validId(fromDb);
+      return persistId(chosen || uuid());
+    }).catch(function () { return deviceId(); });
+    return deviceIdReady;
   }
 
   function getToken() {
@@ -191,6 +265,7 @@
   }
 
   async function doLogin() {
+    await ensureDeviceId();
     var uEl = document.getElementById('alola-auth-user');
     var pEl = document.getElementById('alola-auth-pass');
     var eEl = document.getElementById('alola-auth-err');
@@ -256,6 +331,7 @@
   }
 
   async function doAmirLogin(withCode) {
+    await ensureDeviceId();
     var eEl = document.getElementById('alola-auth-err');
     var bEl = document.getElementById(withCode ? 'alola-auth-pair' : 'alola-auth-amir');
     var bTxt = bEl ? bEl.textContent : '';
@@ -439,6 +515,7 @@
   }
 
   async function consumeBindLink() {
+    await ensureDeviceId();
     if (!BIND_TOKEN) return false;
     showOverlay();
     var eEl = document.getElementById('alola-auth-err');
@@ -465,6 +542,7 @@
   }
 
   async function boot() {
+    await ensureDeviceId();
     injectStyles();
     wake();
     var bound = await consumeBindLink();
